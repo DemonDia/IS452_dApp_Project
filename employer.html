@@ -1,0 +1,309 @@
+
+
+<!-- new one -->
+
+<html>
+    <head>
+        <title>GlobalPay</title>
+        <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="js/web3.min.js"></script>
+
+        <!-- Keep first -->
+        <script src="https://cdn.jsdelivr.net/gh/ethereumjs/browser-builds/dist/ethereumjs-tx/ethereumjs-tx-1.3.3.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous"></head>
+        <link rel="stylesheet" href="index.css">  
+    </head>
+<body class=" w-screen h-screen justify-center items-center grid">
+
+<div class = " align-items-center justify-content-center">
+    <h1>Employer</h1>
+    <div id = "message" class="alert alert-danger"></div>
+    <div class="input-group input-group-sm mb-3">
+        <span class="input-group-text" id="inputGroup-sizing-sm">Employee Address</span>
+        <input 
+        id = "employeeAddr"
+        type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm">
+      </div>
+
+      <div class="input-group input-group-sm mb-3">
+        <span class="input-group-text" id="inputGroup-sizing-sm">Tokens to Pay</span>
+        <input 
+        id = "tokensToPay"
+        type="number" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm">
+      </div>
+
+      <div class="input-group input-group-sm mb-3">
+        <span class="input-group-text" id="inputGroup-sizing-sm">Vault key</span>
+        <input 
+        id = "vaultKey"
+        type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm">
+      </div>
+
+      <div class="input-group mb-3">
+        <button class="btn btn-outline-primary" type="button" id="button-addon1"
+        onclick = "viewCurrentTokens()">View tokens</button>
+        <input 
+        type="text" class="form-control" id = "tokenCount" placeholder="No of tokens" disabled aria-label="Example text with button addon" aria-describedby="button-addon1">
+      </div>
+
+      <div class="input-group mb-3">
+        <button class="btn btn-outline-primary" type="button" id="button-addon1"
+        onclick = "viewPaidStatus()">View paid status</button>
+        <input 
+        type="text" class="form-control" id = "paidStatus" placeholder="Paid status" disabled aria-label="Example text with button addon" aria-describedby="button-addon1">
+      </div>
+      <br>
+
+      <button class = "btn btn-primary"
+      onclick = "paySolution()">Pay solution</button>
+
+      <button class = "btn btn-primary"
+      onclick = "submitRequest()">Submit Request</button>
+	  <br>
+	  <br>
+	  <button class = "btn btn-primary"
+onclick = "window.location = 'solution.html'">Go to solution</button>
+</div>
+
+</div>
+
+
+<script> 
+web3 = new Web3(new Web3.providers.HttpProvider('https://ropsten.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161'));
+async function loginWithMetaMask() {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+        .catch((e) => {
+          console.error(e.message)
+          return
+        })
+      if (!accounts) { return }
+      else{
+		  console.log(accounts)
+		  
+        web3.eth.defaultAccount  = accounts[0]
+        
+		$("#current").html(web3.eth.defaultAccount)
+		console.log(web3.eth.defaultAccount)
+		curr_address = web3.eth.defaultAccount
+
+
+		if(!sessionStorage.getItem("employer")){
+			console.log("empty")
+			changeAdd()
+		}
+		else if(sessionStorage.getItem("employer") !== web3.eth.defaultAccount ){
+			console.log("wanna change")
+			changeAdd()
+		}
+		else{
+			console.log("dont pop up")
+		}
+
+		
+		
+      }
+      
+    }
+	async function getAccount() {
+   await loginWithMetaMask()
+   console.log(web3.eth.defaultAccount)
+
+}
+
+
+loginWithMetaMask()
+ethereum.on('accountsChanged', function (accounts) {
+  getAccount();
+  
+})
+
+var solutionABI =  solution_abi // the ABI from Solution.sol
+
+var employerABI = employer_abi // the ABI from Employer.sol
+
+var employerContractAddr = your_employer_contract_address
+
+// updated
+var solutionContractAddr = your_solution_contract_address
+
+var employerContract = web3.eth.contract(employerABI).at(employerContractAddr);
+var solutionContract = web3.eth.contract(solutionABI).at(solutionContractAddr);
+
+
+
+
+
+// view tokens
+function viewCurrentTokens(){
+    var tokens = solutionContract.balanceOf(web3.eth.defaultAccount)
+    console.log(tokens.c[0])
+    $("#tokenCount").val(tokens.c[0]);
+}
+
+// view paid status
+function viewPaidStatus(){
+    if(employerContract.flag() === false){
+        $("#paidStatus").val("Yet to pay")
+    }
+    else{
+        $("#paidStatus").val("Paid")
+    }
+}
+
+// pay solution
+function paySolution(){
+    contractData = employerContract.amtPaid.getData()
+    console.log(contractData)
+    var params=  [
+        {
+            from: web3.eth.defaultAccount,
+            to: employerContractAddr,
+            data:contractData
+            
+        },
+    ];
+    ethereum
+    .request({
+        method: 'eth_sendTransaction',
+        params,
+    })
+    .then((result) => {
+        var warning = document.getElementById("message")
+        console.log(result)
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-success")
+        warning.innerText = "Payment succesful!!"
+    })
+    .catch((error) => {
+        var warning = document.getElementById("message")
+        console.log(error)
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-danger")
+        warning.innerText = "Payment unsuccessful!!"
+    });
+
+}
+
+// submit token request
+function submitRequest(){
+// values needed (employee address, tokens and vault key)
+    var employeeAddr = $("#employeeAddr").val();
+    var tokensToPay = $("#tokensToPay").val();
+    var vaultKey = $("#vaultKey").val();
+    console.log("tokens",tokensToPay)
+    console.log(employeeAddr)
+    console.log(vaultKey)
+    var valid = solutionContract.checkKeys(vaultKey)
+
+    if(valid == false){
+        var warning = document.getElementById("message")
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-danger")
+        warning.innerText = "Invalid vault key"
+    }
+	else if (tokensToPay === ""){
+        var warning = document.getElementById("message")
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-danger")
+        warning.innerText = "Cannot be empty!"
+	}
+	else if (employeeAddr === ""){
+        var warning = document.getElementById("message")
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-danger")
+        warning.innerText = "Employer's address cannot be empty!"
+	}
+
+    else if(employerContract.flag() == false){
+        var warning = document.getElementById("message")
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-danger")
+        warning.innerText = "Pay first"
+    }
+
+    else{
+//getData takes in the parameters of your smart contract's function
+        contractData = employerContract.sendAmount.getData(
+            solutionContractAddr,
+            employeeAddr,
+            tokensToPay,
+            vaultKey
+        )
+        var params=  [
+            {
+                from: web3.eth.defaultAccount,
+                to: employerContractAddr,
+                data:contractData
+                
+            },
+        ];
+        ethereum
+        .request({
+            method: 'eth_sendTransaction',
+            params,
+        })
+        .then((result) => {
+            var warning = document.getElementById("message")
+            console.log(result)
+            warning.style.display = "block";
+            warning.setAttribute("class","alert alert-success")
+            warning.innerText = "Request successfully sent!!"
+        })
+        .catch((error) => {
+            var warning = document.getElementById("message")
+            console.log(error)
+            warning.style.display = "block";
+            warning.setAttribute("class","alert alert-danger")
+            warning.innerText = "Request cannot be sent!!"
+        });
+
+        
+
+
+    }
+    
+}
+
+
+function changeAdd(){
+    contractData = employerContract.changeOwner.getData(web3.eth.defaultAccount)
+    console.log(contractData)
+    var params=  [
+        {
+            from: web3.eth.defaultAccount,
+            to: employerContractAddr, 
+            data:contractData
+            
+        },
+    ];
+    ethereum
+    .request({
+        method: 'eth_sendTransaction',
+        params,
+    })
+    .then((result) => {
+
+		sessionStorage.setItem("employer",web3.eth.defaultAccount)
+        console.log(result)
+        warning.style.display = "block";
+        warning.setAttribute("class","alert alert-success")
+        warning.innerText = "Account switch succesful!!"
+    })
+    .catch((error) => {
+        console.log(error)
+
+    });
+
+}
+
+
+
+
+
+ 
+  </script>
+ 
+</body>
+
+</html>
